@@ -1,18 +1,105 @@
 from jsondatahelper import KEY_SPLIT_CHAR, flatten, format_dict, unflatten
+import json
 
-from globals import (
-    ATTRIBUTES,
-    FUNCTIONS,
-    OBJECT_ATTRIBUTE,
-    OBJECT_NAME,
-    VARIABLE_NAMES,
-    english,
-    pythonic,
-    is_instanciated,
-    read_json_file,
-    splunk,
-    write_to_file,
-)
+
+OBJECT_NAME = "name"
+OBJECT_ATTRIBUTE = "attribute"
+ATTRIBUTES = "attributes"
+FUNCTIONS = "functions"
+VARIABLE_NAMES = "variable Names"
+VARIABLE_VALUES = "variable Values"
+
+JSONLINK_ATTRIBUTE_FILTERS = [
+    "update_from_dict",
+    "is_function",
+    "create_example",
+    "get_state",
+]
+
+
+def write_to_file(file_path, data):
+    with open(file_path, "w+", encoding="utf-8") as f:
+        json.dump(
+            data, f, ensure_ascii=True, indent=4,
+        )
+
+
+def convert_bytes(loaded_json):
+    for key, val in loaded_json.items():
+        if isinstance(val, dict):
+            loaded_json[key] = convert_bytes(val)
+        elif isinstance(val, list):
+            for index, item in enumerate(val):
+                if isinstance(item, dict):
+                    loaded_json[key][index] = convert_bytes(item)
+                elif isinstance(item, str) and item.startswith("b'"):
+                    loaded_json[key][index] = bytes.fromhex(item.split("b'")[1])
+        elif isinstance(val, str) and val.startswith("b'"):
+            loaded_json[key] = bytes.fromhex(val.split("b'")[1])
+
+    return loaded_json
+
+
+def read_json_file(file_path):
+    try:
+        with open(file_path, "r+") as file_contents:
+            return convert_bytes(json.load(file_contents))
+    except FileNotFoundError:
+        return None
+
+
+def get_attributes(object_reference, filters=["__"]):
+    functions = dir(object_reference)
+    filtered_functions = dir(object_reference)
+    for function_name in functions:
+        for filter in filters:
+            if filter in function_name:
+                filtered_functions.remove(function_name)
+    return filtered_functions
+
+
+def get_variables(object):
+    return list(object.__dict__.keys()), list(object.__dict__.values())
+
+
+def is_instanciated(object):
+    return "." in str(type(object))
+
+
+def splunk(object, attribute_filters=["__"], *args, **kwargs):
+    """
+    Gathers all object attributes (function names & variables) and returns them as a dictionary:
+    Attribute filter will filter out any attributes that input string is found in.
+    """
+    if not is_instanciated(object):  # If not instanciated
+        object = object()
+
+    object_name = type(object).__name__
+    object_attributes = get_attributes(object, attribute_filters)
+    object_variable_names, object_variable_values = get_variables(object)
+    object_functions = list(
+        set(object_attributes).difference(set(object_variable_names))
+    )
+    object_functions.sort()
+
+    return {
+        OBJECT_NAME: object_name,
+        ATTRIBUTES: object_attributes,
+        FUNCTIONS: object_functions,
+        VARIABLE_NAMES: object_variable_names,
+        VARIABLE_VALUES: object_variable_values,
+    }
+
+
+def pythonic(string):
+    return string.replace(" ", "_").lower()
+
+
+def english(string):
+    s = ""
+    for word in string.split("_"):
+        s = s + word.capitalize() + " "
+    return s.rstrip()
 
 
 def get_indexes(path, return_last_found=False):
@@ -41,7 +128,6 @@ class SubClass:
         self.functions = self.properties[FUNCTIONS]
 
     def build_new(self):
-
         return self.class_reference()
 
     def has_attribute(self, attribute):
@@ -57,8 +143,13 @@ class KeywordAttributeLink:
         self.class_name = class_name
         self.is_function = is_function
 
-
-JSONLINK_ATTRIBUTE_FILTERS = ["update_from_dict", "is_function", "create_example"]
+    # def __repr__(self):
+    #     return f"""
+    #     [ATTRIBUTE LINK]
+    #         Name        : {self.attribute}
+    #         Class       : {self.class_name}
+    #         Is Function : {self.is_function}
+    #     """
 
 
 class JsonLink:
@@ -153,7 +244,7 @@ class JsonLink:
         attribute_name = pythonic(" ".join(split_keyword[1 : len(split_keyword)]))
         try:
             if self.sub_classes[class_name].has_attribute(attribute_name):
-                KeywordAttributeLink(
+                return KeywordAttributeLink(
                     attribute_name,
                     class_name,
                     self.sub_classes[class_name].is_function(attribute_name),
@@ -168,11 +259,12 @@ class JsonLink:
         property_name = pythonic(property_name)
         try:
             attribute_link = self.attribute_keyword_links[property_name]
+
             perform_action_on_this = None
             if attribute_link.class_name == self.name:
                 perform_action_on_this = self
 
-            elif sub_class_container_index >= 0:  # Is sub class object
+            elif int(sub_class_container_index) >= 0:  # Is sub class object
                 sub_class_object = self.__get_sub_class_item(
                     attribute_link.class_name, sub_class_container_index
                 )
@@ -198,7 +290,9 @@ class JsonLink:
 
     def __get_sub_class_item(self, sub_class_name, sub_class_container_index):
         try:
-            return self.sub_class_containers[sub_class_name][sub_class_container_index]
+            return self.sub_class_containers[sub_class_name][
+                int(sub_class_container_index)
+            ]
         except IndexError:  # Item Does Not Exist
             return None
 
@@ -219,7 +313,33 @@ class JsonLink:
                 leaf_property = pythonic(split_path[-1])
                 index = get_indexes(property_path, return_last_found=True)
                 self.__process_attribute(leaf_property, property_value, index)
+
         return self
+
+    def get_state(self):
+
+        state = filter_dict(
+            self.__dict__,
+            [
+                "keywords",
+                "sub_classes",
+                "attribute_keyword_links",
+                "sub_class_containers",
+                "functions",
+                "attributes",
+                "properties",
+                "variables",
+                "name",
+            ],
+        )
+
+        for sub_class, container in self.sub_class_containers.items():
+            container_name = sub_class + "s"
+            state[container_name] = []
+            for item in container:
+                print("HIT")
+                state[container_name].append(item.__dict__)
+        return state
 
     def create_example(self):
         pass
@@ -231,5 +351,13 @@ class JsonLink:
             Variables   : {self.variables}\n
             Functions   : {self.functions}\n
             Keywords    : {self.keywords}\n
+            Sub Classes : {self.sub_classes}\n                       
         """
 
+
+def filter_dict(dictionary, filter_list=[]):
+    filtered_dict = {}
+    for item in dictionary:
+        if not item in filter_list:
+            filtered_dict[item] = dictionary[item]
+    return filtered_dict
