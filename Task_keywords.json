@@ -1,0 +1,14 @@
+{
+  "Python Dependencies": ["python files", "associated file"],
+  "Task Description": [],
+  "Global Values": ["shared values", "shared data"],
+  "Global Hooks": ["hooks", "global look for"],
+  "Step Groupings": ["Groupings", "order of operations"],
+  "Steps": ["Task Steps"],
+  "Step Name": ["name"],
+  "Step Description": ["description", "desc"],
+  "Step Hooks": ["look for"],
+  "Step Data": ["data", "overrides"],
+  "Step Dependent On": ["dependent on", "dep", "dependency"],
+  "Task Name": []
+}
