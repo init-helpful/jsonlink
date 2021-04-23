@@ -1,4 +1,8 @@
-from jsondatahelper import KEY_SPLIT_CHAR, flatten, format_dict, unflatten
+from jsondatahelper import (
+    KEY_SPLIT_CHAR,
+    flatten,
+    subpath_value,
+)
 import json
 
 
@@ -22,6 +26,45 @@ def write_to_file(file_path, data):
         json.dump(
             data, f, ensure_ascii=True, indent=4,
         )
+
+
+def pythonic(obj):
+    if isinstance(obj, list):
+        return pythonic_list(obj)
+    elif isinstance(obj, str):
+        return pythonic_string(obj)
+    else:
+        print(
+            "Object type not supported", str(type(obj)), "for python string conversion"
+        )
+
+
+def pythonic_list(lst):
+    return [pythonic_string(string) for string in lst]
+
+
+def pythonic_string(string):
+    return string.replace(" ", "_").lower()
+
+
+def english(string):
+    s = ""
+    for word in string.split("_"):
+        s = s + word.capitalize() + " "
+    return s.rstrip()
+
+
+def lists_are_equal(list_one, list_two):
+    return len(list_intersection(list_one, list_two)) == len(list_one)
+
+
+def list_intersection(list_one, list_two):
+    if list_one and list_two:
+        return list(set(list_one) & set(list_two))
+
+
+def pythonic_list_intersection(list_one, list_two):
+    return list_intersection(pythonic(list_one), pythonic(list_two))
 
 
 def convert_bytes(loaded_json):
@@ -91,17 +134,6 @@ def splunk(object, attribute_filters=["__"], *args, **kwargs):
     }
 
 
-def pythonic(string):
-    return string.replace(" ", "_").lower()
-
-
-def english(string):
-    s = ""
-    for word in string.split("_"):
-        s = s + word.capitalize() + " "
-    return s.rstrip()
-
-
 def get_indexes(path, return_last_found=False):
     """
     'path' represents a single property in flattend dictionary
@@ -115,6 +147,8 @@ def get_indexes(path, return_last_found=False):
     if found_indexes:
         if return_last_found:
             return found_indexes[-1]
+    else:
+        return -1
     return found_indexes
 
 
@@ -153,7 +187,13 @@ class KeywordAttributeLink:
 
 
 class JsonLink:
-    def __init__(self, keywords_file_path="", sub_classes=[], attribute_filters=["__"]):
+    def __init__(
+        self,
+        sub_classes=[],
+        attribute_filters=["__"],
+        keywords_file_path="",
+        use_keywords_file=False,
+    ):
         self.__add_jsonlink_attribute_filters(attribute_filters)
         self.properties = splunk(self, attribute_filters=attribute_filters)
         self.name = self.properties[OBJECT_NAME]
@@ -162,7 +202,7 @@ class JsonLink:
         self.variables = self.properties[VARIABLE_NAMES]
         self.__build_keywords()
         self.__associate_sub_classes(sub_classes)
-        self.__read_keywords_file(keywords_file_path)
+        self.__read_keywords_file(keywords_file_path, use_keywords_file)
         self.__associate_keywords_to_attributes()
 
     def __add_jsonlink_attribute_filters(self, attribute_filters):
@@ -184,34 +224,41 @@ class JsonLink:
                 self.sub_classes[sub_class.name] = sub_class
                 self.sub_class_containers[sub_class.name] = []
                 for sub_class_attribute in sub_class.attributes:
-                    self.keywords[
-                        english(sub_class.name + "_" + sub_class_attribute)
-                    ] = []
+                    self.keywords[english(sub_class_attribute)] = []
 
     def __purge_sub_class_containters(self):
         for sub_class_name in self.sub_class_containers:
             self.sub_class_containers[sub_class_name] = []
 
-    def __read_keywords_file(self, keywords_file_path):
-        if not keywords_file_path:  # Set Default Keywords file for given class object
-            keywords_file_path = self.properties[OBJECT_NAME] + "_keywords" + ".json"
+    def __read_keywords_file(self, keywords_file_path, use_keywords_file):
+        if use_keywords_file or keywords_file_path:
+            if (
+                not keywords_file_path
+            ):  # Set Default Keywords file for given class object
+                keywords_file_path = (
+                    self.properties[OBJECT_NAME] + "_keywords" + ".json"
+                )
 
-        found_keywords_file_contents = read_json_file(keywords_file_path)
+            found_keywords_file_contents = read_json_file(keywords_file_path)
 
-        if not found_keywords_file_contents:  # If file not found, create new
-            write_to_file(keywords_file_path, self.keywords)
+            if not found_keywords_file_contents:  # If file not found, create new
+                write_to_file(keywords_file_path, self.keywords)
 
-        elif not len(self.keywords.keys()) == len(found_keywords_file_contents.keys()):
-            for key in self.keywords.keys():
-                try:
-                    found_keywords_file_contents[key]
-                except KeyError:
-                    found_keywords_file_contents[key] = []
+            elif not lists_are_equal(
+                self.keywords.keys(), found_keywords_file_contents.keys()
+            ):
+                for key in self.keywords.keys():
+                    try:
+                        found_keywords_file_contents[key]
+                    except KeyError:
+                        found_keywords_file_contents[key] = []
 
-            write_to_file(keywords_file_path, found_keywords_file_contents)
-            self.keywords = found_keywords_file_contents
+                write_to_file(keywords_file_path, found_keywords_file_contents)
+                self.keywords = found_keywords_file_contents
+            else:
+                self.keywords = found_keywords_file_contents
         else:
-            self.keywords = found_keywords_file_contents
+            pass  # Keyword are already set in __build_keywords and __associate_sub_classes
 
     def is_function(self, function_name):
         return function_name in self.properties[FUNCTIONS]
@@ -239,25 +286,21 @@ class JsonLink:
                     self.attribute_keyword_links[pythonic(alias)] = attribute_link
 
     def __find_sub_class_attribute(self, keyword):
-        split_keyword = keyword.split("_")
-        class_name = split_keyword[0].lower()
-        attribute_name = pythonic(" ".join(split_keyword[1 : len(split_keyword)]))
-        try:
-            if self.sub_classes[class_name].has_attribute(attribute_name):
+        for sub_class in self.sub_classes.values():
+            if sub_class.has_attribute(keyword):
+                class_name = sub_class.name
                 return KeywordAttributeLink(
-                    attribute_name,
+                    keyword,
                     class_name,
-                    self.sub_classes[class_name].is_function(attribute_name),
+                    self.sub_classes[class_name].is_function(keyword),
                 )
-
-        except KeyError:
-            return None  # Is not sub-class keyword
 
     def __process_attribute(
         self, property_name, property_value, sub_class_container_index=-1
     ):
         property_name = pythonic(property_name)
         try:
+
             attribute_link = self.attribute_keyword_links[property_name]
 
             perform_action_on_this = None
@@ -285,6 +328,7 @@ class JsonLink:
             )
 
         except KeyError:
+            print(f"{property_name} not found!")
             return False  # Attribute not found
         return True  # Attribute found
 
@@ -306,13 +350,24 @@ class JsonLink:
 
     def update_from_dict(self, dictionary):
         self.__purge_sub_class_containters()
+
         for property_path, property_value in flatten(dictionary).items():
             split_path = property_path.split(KEY_SPLIT_CHAR)
-            root_property = split_path[0]
-            if not self.__process_attribute(root_property, dictionary[root_property]):
-                leaf_property = pythonic(split_path[-1])
-                index = get_indexes(property_path, return_last_found=True)
-                self.__process_attribute(leaf_property, property_value, index)
+            found_keywords = pythonic_list_intersection(
+                list(self.attribute_keyword_links.keys()), split_path
+            )
+            if found_keywords:
+                found_keyword = found_keywords[0]
+                if not found_keyword == split_path[len(split_path) - 1]:
+                    property_value = subpath_value(
+                        {pythonic(property_path): property_value}, found_keyword
+                    )
+
+                self.__process_attribute(
+                    found_keyword,
+                    property_value,
+                    get_indexes(property_path, return_last_found=True),
+                )
 
         return self
 
@@ -337,7 +392,6 @@ class JsonLink:
             container_name = sub_class + "s"
             state[container_name] = []
             for item in container:
-                print("HIT")
                 state[container_name].append(item.__dict__)
         return state
 
@@ -361,3 +415,4 @@ def filter_dict(dictionary, filter_list=[]):
         if not item in filter_list:
             filtered_dict[item] = dictionary[item]
     return filtered_dict
+

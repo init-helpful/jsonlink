@@ -1,0 +1,2 @@
+/Users/andrewcummings/anaconda3/envs/jsonlink/bin/python /Users/andrewcummings/Documents/Projects/Personal/jsonlink/setup.py bdist_wheel
+twine upload dist/*

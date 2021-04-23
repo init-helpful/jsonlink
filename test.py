@@ -1,4 +1,4 @@
-from jsonlink import JsonLink
+from src.jsonlink import JsonLink
 
 
 class JsonLinkTest(JsonLink):
@@ -26,6 +26,7 @@ class SubClassTwo:
     def __init__(self):
         self.classtwo_var_one = "class 2 var 1"
         self.classtwo_var_two = [8, 7, 6, 5, 4, 3, 2, 1]
+        self.classtwo_var_three = "empty"
 
     def sub_class_2_func_1(self, properties):
         print(properties)
@@ -35,17 +36,17 @@ json_link_test = JsonLinkTest().update_from_dict(
     {
         "test_var_1": "This is a test",
         "test_var_2": "This is also a test",
-        "this_is_a_function": "This will be printed out",
+        "this_is_a_function": {"This will be printed out-------":"TEST"},
         "sub_class_ones": [
             {
-                "Subclassone Classone Var One": "sub one value",
-                "Subclassone classone var two": "var 2 value",
-                "Subclassone_sub_class_func_one": ("a1", "b2", "c3"),
+                "Classone Var One": "sub one value",
+                "classone var two": "var 2 value",
+                "sub_class_func_one": ("a1", "b2", "c3"),
             }
         ],
-        "sub_class_twos": [{"SubClassTwo classtwo_var_one":"ahhhh"}],
+        "sub_class_twos": [{"classtwo_var_one": "ahhhh"}],
     }
 )
 
-
-print(json_link_test.get_state())
+# print(json_link_test.keywords)
+print(json_link_test.get_state().values())

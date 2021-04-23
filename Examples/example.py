@@ -1,0 +1,29 @@
+from src.jsonlink import JsonLink
+
+
+class Car(JsonLink):
+    def __init__(self, color="", model=""):
+        self.color = color
+        self.model = model
+        self.hidden_value = ""
+        super(Car, self).__init__(use_keywords_file=True)
+
+    def cool_func(self, passed_in):
+        self.hidden_value = passed_in
+        print("Hey that's pretty neat")
+
+    def __repr__(self):
+        return f"""
+        Color  : {self.color}
+        Model  : {self.model}
+        Hidden : {self.hidden_value}
+        """
+
+
+blue_guyferrari = Car(color="blue", model="guyferrari")
+# blue_guyferrari.color
+# print(blue_guyferrari)
+blue_guyferrari.update_from_dict({"c": "green", "m": "Corola", "cf": "not new data"})
+
+print(blue_guyferrari)
+

@@ -1,0 +1,7 @@
+
+*.txt
+src/jsonlink.egg-info/PKG-INFO
+*.pyc
+*.pyc
+__pycache__/jsonlink.cpython-37.pyc
+*.whl
