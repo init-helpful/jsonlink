@@ -1,0 +1,21 @@
+{
+  "nest_test_var": "This is a nested value hidden in a function!",
+  "subclassones": [
+    {
+      "classone_var_one": "sub one value",
+      "classone_var_two": "var 2 value",
+      "test_nested_sub_var": {
+        "Nested": "dictionary"
+      }
+    }
+  ],
+  "subclasstwos": [
+    {
+      "classtwo_var_one": "ahhhh",
+      "classtwo_var_three": "empty",
+      "classtwo_var_two": [8, 7, 6, 5, 4, 3, 2, 1]
+    }
+  ],
+  "test_var_1": "This is a test",
+  "test_var_2": "This is also a test"
+}
