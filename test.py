@@ -60,5 +60,5 @@ json_link_test = JsonLinkTest().update_from_dict(
         ],
     }
 )
-
-print(json_link_test.get_default_state(save_to_file=True))
+print(json_link_test.get_state())
+# print(json_link_test.save_default_state())
