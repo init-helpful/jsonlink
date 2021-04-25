@@ -20,11 +20,9 @@ class Car(JsonLink):
         """
 
 
-blue_guyferrari = Car(color="blue", model="guyferrari")
-# blue_guyferrari.color
-# print(blue_guyferrari)
+blue_guyferrari = Car(color="", model="")
 blue_guyferrari.update_from_dict(
     {"color": "green", "model": "Corola", "cool_func": "not new data"}
 )
 
-print(blue_guyferrari)
+print(blue_guyferrari.get_default_state(save_to_file=True))

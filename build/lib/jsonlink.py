@@ -1,8 +1,4 @@
-from jsondatahelper import (
-    KEY_SPLIT_CHAR,
-    flatten,
-    subpath_value,
-)
+from jsondatahelper import KEY_SPLIT_CHAR, flatten, subpath_value
 import json
 
 
@@ -24,7 +20,10 @@ JSONLINK_ATTRIBUTE_FILTERS = [
 def write_to_file(file_path, data):
     with open(file_path, "w+", encoding="utf-8") as f:
         json.dump(
-            data, f, ensure_ascii=True, indent=4,
+            data,
+            f,
+            ensure_ascii=True,
+            indent=4,
         )
 
 
@@ -137,7 +136,7 @@ def splunk(object, attribute_filters=["__"], *args, **kwargs):
 def get_indexes(path, return_last_found=False):
     """
     'path' represents a single property in flattend dictionary
-    input  : this->is->1->a->path 
+    input  : this->is->1->a->path
     intermediate : ["this","is",1,"a","path"]
     output : [1]
     """
@@ -359,9 +358,11 @@ class JsonLink:
             if found_keywords:
                 found_keyword = found_keywords[0]
                 if not found_keyword == split_path[len(split_path) - 1]:
-                    property_value = subpath_value(
-                        {pythonic(property_path): property_value}, found_keyword
-                    )
+                    property_value = list(
+                        subpath_value(
+                            {pythonic(property_path): property_value}, found_keyword
+                        ).values()
+                    )[0]
 
                 self.__process_attribute(
                     found_keyword,
@@ -395,8 +396,10 @@ class JsonLink:
                 state[container_name].append(item.__dict__)
         return state
 
-    def create_example(self):
-        pass
+    def generate_default(self):
+        default_state = {}
+        print(self.properties)
+        
 
     def __repr__(self):
         return f"""
@@ -415,4 +418,3 @@ def filter_dict(dictionary, filter_list=[]):
         if not item in filter_list:
             filtered_dict[item] = dictionary[item]
     return filtered_dict
-

@@ -1,0 +1,17 @@
+{
+    "test_var_1": "",
+    "test_var_2": "",
+    "subclassones": [
+        {
+            "classone_var_one": "",
+            "classone_var_two": ""
+        }
+    ],
+    "subclasstwos": [
+        {
+            "classtwo_var_one": "",
+            "classtwo_var_two": "",
+            "classtwo_var_three": ""
+        }
+    ]
+}
