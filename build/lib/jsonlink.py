@@ -435,12 +435,11 @@ class JsonLink:
                 state[container_name].append(item.__dict__)
         return state
 
-    def save_default_state(self, save_to_file=False, file_path=""):
+    def save_default_state(self, file_path=""):
         file_name = "default_" + self.name + ".json"
-        if file_path:
-            write_to_file(file_path, self.default_state)
-        elif save_to_file:
-            write_to_file(file_name, self.default_state)
+        if not file_path:
+            file_path = file_name
+        write_to_file(file_path, self.default_state)
 
     def __repr__(self):
         return f"""
