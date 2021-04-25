@@ -1,7 +1,7 @@
 from jsondatahelper import KEY_SPLIT_CHAR, flatten, subpath_value
 import json
 
-
+DEFAULT_PLURAL_ID = "s"
 OBJECT_NAME = "name"
 OBJECT_ATTRIBUTE = "attribute"
 ATTRIBUTES = "attributes"
@@ -15,6 +15,23 @@ JSONLINK_ATTRIBUTE_FILTERS = [
     "create_example",
     "get_state",
 ]
+
+PRIMATIVE_DEFAULTS = {"str": "", "list": (), "dict": {}, "int": 0}
+
+
+def filter_dict(dictionary, filter_list=[]):
+    return {k: v for k, v in dictionary.items() if k not in filter_list}
+
+
+def get_default_primative(variable_value):
+    try:
+        return PRIMATIVE_DEFAULTS[type(variable_value)]
+    except:
+        return ""
+
+
+def primative_default_list(list_of_values):
+    return [get_default_primative(value) for value in list_of_values]
 
 
 def write_to_file(file_path, data):
@@ -158,6 +175,7 @@ class SubClass:
         self.name = self.properties[OBJECT_NAME].lower()
         self.attributes = self.properties[ATTRIBUTES]
         self.variables = self.properties[VARIABLE_NAMES]
+        self.variable_values = self.properties[VARIABLE_VALUES]
         self.functions = self.properties[FUNCTIONS]
 
     def build_new(self):
@@ -192,13 +210,12 @@ class JsonLink:
         attribute_filters=["__"],
         keywords_file_path="",
         use_keywords_file=False,
+        plural_identifier=DEFAULT_PLURAL_ID,
     ):
         self.__add_jsonlink_attribute_filters(attribute_filters)
         self.properties = splunk(self, attribute_filters=attribute_filters)
-        self.name = self.properties[OBJECT_NAME]
-        self.attributes = self.properties[ATTRIBUTES]
-        self.functions = self.properties[FUNCTIONS]
-        self.variables = self.properties[VARIABLE_NAMES]
+        self.plural_identifier = plural_identifier
+        self.__set_meta_variables()
         self.__build_keywords()
         self.__associate_sub_classes(sub_classes)
         self.__read_keywords_file(keywords_file_path, use_keywords_file)
@@ -208,6 +225,16 @@ class JsonLink:
         for attribute in JSONLINK_ATTRIBUTE_FILTERS:
             attribute_filters.append(attribute)
         return attribute_filters
+
+    def __set_meta_variables(self):
+        self.name = self.properties[OBJECT_NAME]
+        self.attributes = self.properties[ATTRIBUTES]
+        self.functions = self.properties[FUNCTIONS]
+        self.variables = self.properties[VARIABLE_NAMES]
+        self.variable_values = self.properties[VARIABLE_VALUES]
+        self.default_state = dict(
+            zip(self.variables, primative_default_list(self.variable_values))
+        )
 
     def __build_keywords(self):
         self.keywords = {}
@@ -221,7 +248,18 @@ class JsonLink:
             for class_reference in sub_classes:
                 sub_class = SubClass(class_reference)
                 self.sub_classes[sub_class.name] = sub_class
-                self.sub_class_containers[sub_class.name] = []
+
+                self.default_state[sub_class.name + self.plural_identifier] = [
+                    dict(
+                        zip(
+                            sub_class.properties[VARIABLE_NAMES],
+                            primative_default_list(
+                                sub_class.properties[VARIABLE_VALUES],
+                            ),
+                        )
+                    )
+                ]
+
                 for sub_class_attribute in sub_class.attributes:
                     self.keywords[english(sub_class_attribute)] = []
 
@@ -357,6 +395,7 @@ class JsonLink:
             )
             if found_keywords:
                 found_keyword = found_keywords[0]
+
                 if not found_keyword == split_path[len(split_path) - 1]:
                     property_value = list(
                         subpath_value(
@@ -390,16 +429,18 @@ class JsonLink:
         )
 
         for sub_class, container in self.sub_class_containers.items():
-            container_name = sub_class + "s"
+            container_name = sub_class + self.plural_identifier
             state[container_name] = []
             for item in container:
                 state[container_name].append(item.__dict__)
         return state
 
-    def generate_default(self):
-        default_state = {}
-        print(self.properties)
-        
+    def save_default_state(self, save_to_file=False, file_path=""):
+        file_name = "default_" + self.name + ".json"
+        if file_path:
+            write_to_file(file_path, self.default_state)
+        elif save_to_file:
+            write_to_file(file_name, self.default_state)
 
     def __repr__(self):
         return f"""
@@ -410,11 +451,3 @@ class JsonLink:
             Keywords    : {self.keywords}\n
             Sub Classes : {self.sub_classes}\n                       
         """
-
-
-def filter_dict(dictionary, filter_list=[]):
-    filtered_dict = {}
-    for item in dictionary:
-        if not item in filter_list:
-            filtered_dict[item] = dictionary[item]
-    return filtered_dict

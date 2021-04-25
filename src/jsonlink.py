@@ -21,7 +21,8 @@ PRIMATIVE_DEFAULTS = {"str": "", "list": (), "dict": {}, "int": 0}
 
 def filter_dict(dictionary, filter_list=[]):
     return {k: v for k, v in dictionary.items() if k not in filter_list}
-    
+
+
 def get_default_primative(variable_value):
     try:
         return PRIMATIVE_DEFAULTS[type(variable_value)]
