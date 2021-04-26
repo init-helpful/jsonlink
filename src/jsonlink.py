@@ -16,6 +16,21 @@ JSONLINK_ATTRIBUTE_FILTERS = [
     "get_state",
 ]
 
+GET_STATE_FILTERS = [
+    "keywords",
+    "sub_classes",
+    "attribute_keyword_links",
+    "sub_class_containers",
+    "functions",
+    "attributes",
+    "properties",
+    "variables",
+    "name",
+    "plural_identifier",
+    "variable_values",
+    "default_state",
+]
+
 PRIMATIVE_DEFAULTS = {"str": "", "list": [], "dict": {}, "int": 0}
 
 
@@ -32,7 +47,7 @@ def get_default_primative(variable_value):
 
 
 def primative_default_list(list_of_values):
-    
+
     return [get_default_primative(value) for value in list_of_values]
 
 
@@ -341,7 +356,7 @@ class JsonLink:
         try:
 
             attribute_link = self.attribute_keyword_links[property_name]
-            
+
             perform_action_on_this = None
             if attribute_link.class_name == self.name:
                 perform_action_on_this = self
@@ -415,20 +430,7 @@ class JsonLink:
 
     def get_state(self):
 
-        state = filter_dict(
-            self.__dict__,
-            [
-                "keywords",
-                "sub_classes",
-                "attribute_keyword_links",
-                "sub_class_containers",
-                "functions",
-                "attributes",
-                "properties",
-                "variables",
-                "name",
-            ],
-        )
+        state = filter_dict(self.__dict__, GET_STATE_FILTERS)
 
         for sub_class, container in self.sub_class_containers.items():
             container_name = sub_class + self.plural_identifier
