@@ -256,7 +256,7 @@ class JsonLink:
     def __build_keywords(self):
         self.keywords = {}
         for attribute in self.properties[ATTRIBUTES]:
-            self.keywords[english(attribute)] = []
+            self.keywords[pythonic(attribute)] = []
 
     def __associate_sub_classes(self, sub_classes):
         self.sub_class_containers = {}
@@ -278,7 +278,7 @@ class JsonLink:
                 ]
 
                 for sub_class_attribute in sub_class.attributes:
-                    self.keywords[english(sub_class_attribute)] = []
+                    self.keywords[pythonic(sub_class_attribute)] = []
 
     def __purge_sub_class_containters(self):
         for sub_class_name in self.sub_class_containers:
